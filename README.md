@@ -67,6 +67,9 @@ TLS Certificate Expiry Report:
 * No secrets or credentials are logged.
 * ADC credentials can be revoked anytime.
 
+### Project Structure:
+
+
 / (root)
 ├── tls_cert_tracker.py    # Main Python script for TLS certificate tracking
 ├── README.md              # Documentation for the project
