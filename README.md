@@ -55,9 +55,6 @@ python3 tls_cert_tracker.py --project <PROJECT_ID>
 ## Example Output
 
 ```
-Proxy: my-https-lb — Certificates: 1
-   Cert: custom-cert-01 | Managed: False
-
 TLS Certificate Expiry Report:
 🟢 OK | Proxy: apigee-lb-k5gobsc6uxu8 | Cert: apigee-ssl-cert-cwwcsnstbuz2 | Managed: True | Expiry: None
 🔴 Expiring Soon | Proxy: apigee-lb-k5gobsc6uxu8 | Cert: expire7-cert | Managed: False | Expiry: 2025-06-04T08:18:30+00:00
