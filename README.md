@@ -59,8 +59,10 @@ Proxy: my-https-lb — Certificates: 1
    Cert: custom-cert-01 | Managed: False
 
 TLS Certificate Expiry Report:
-OK | Proxy: my-https-lb | Cert: custom-cert-01 | Managed: False | Expiry: 2025-07-11T02:41:11+00:00
-```
+🟢 OK | Proxy: apigee-lb-k5gobsc6uxu8 | Cert: apigee-ssl-cert-cwwcsnstbuz2 | Managed: True | Expiry: None
+🔴 Expiring Soon | Proxy: apigee-lb-k5gobsc6uxu8 | Cert: expire7-cert | Managed: False | Expiry: 2025-06-04T08:18:30+00:00
+🟡 Warning | Proxy: apigee-lb-k5gobsc6uxu8 | Cert: expire15-cert | Managed: False | Expiry: 2025-06-12T08:18:37+00:00
+🟢 OK | Proxy: kam-https-lb-target-proxy | Cert: kam-test-cert | Managed: False | Expiry: 2025-07-11T02:41:11+00:00```
 
 ## Security Notes
 
