@@ -11,7 +11,7 @@ It supports both Google-managed and self-managed certificates:
 The script helps proactively detect expired or about-to-expire certificates, which can prevent outages in HTTPS services.
 It is designed for internal visibility and can be used in operational monitoring or compliance reviews.
 
-Author: Kam (kamxnet)
+Author: Kamal Bawa (kamxnet)
 License: MIT
 """
 
