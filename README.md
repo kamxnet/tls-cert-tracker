@@ -75,8 +75,8 @@ TLS Certificate Expiry Report:
 ├── README.md              # Documentation (this file)
 ├── LICENSE                # Copyright License
 ├── sample_output          # Example Output from Coud Shell
-
 ```
+
 ## License
 
 MIT License
