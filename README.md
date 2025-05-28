@@ -67,6 +67,16 @@ TLS Certificate Expiry Report:
 * No secrets or credentials are logged.
 * ADC credentials can be revoked anytime.
 
+### Project Structure:
+
+```
+/ (root)
+├── tls_cert_tracker.py    # Main pythn code
+├── README.md              # Documentation (this file)
+├── LICENSE                # Copyright License
+├── sample_output          # Example Output from Coud Shell
+
+```
 ## License
 
 MIT License
