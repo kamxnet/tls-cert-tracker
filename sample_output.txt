@@ -1,6 +1,34 @@
-TLS Certificate Expiry Report:
+TLS Certificate Expiry Report
+====================================================================================================
 
-🟢 OK | Proxy: apigee-lb-k5gobsc6uxu8 | Cert: apigee-ssl-cert-cwwcsnstbuz2 | Managed: True | Expiry: None
-🔴 Expiring Soon | Proxy: apigee-lb-k5gobsc6uxu8 | Cert: expire7-cert | Managed: False | Expiry: 2025-06-04T08:18:30+00:00
-🟡 Warning | Proxy: apigee-lb-k5gobsc6uxu8 | Cert: expire15-cert | Managed: False | Expiry: 2025-06-12T08:18:37+00:00
-🟢 OK | Proxy: kam-https-lb-target-proxy | Cert: kam-test-cert | Managed: False | Expiry: 2025-07-11T02:41:11+00:00
+Summary
+----------------------------------------------------------------------------------------------------
+Total certificates scanned : 8
+Expired                    : 3
+Expiring soon (<=10 days)  : 2
+Warning (<=30 days)        : 1
+Errors                     : 0
+OK                         : 2
+
+Detailed Results
+----------------------------------------------------------------------------------------------------
++---------------+------+------------------------------------+-------------+-----------------------------+------------------------------+---------+------------+
+| Status        | Days | LB Type                            | Region      | Proxy                       | Certificate                  | Managed | Expiry     |
++---------------+------+------------------------------------+-------------+-----------------------------+------------------------------+---------+------------+
+| EXPIRED       | -347 | External Application Load Balancer | global      | apigee-lb-k5gobsc6uxu8      | expire7-cert                 | False   | 2025-06-04 |
+| EXPIRED       | -339 | External Application Load Balancer | global      | apigee-lb-k5gobsc6uxu8      | expire15-cert                | False   | 2025-06-12 |
+| EXPIRED       | -310 | External Application Load Balancer | global      | kam-https-lb-target-proxy   | kam-test-cert                | False   | 2025-07-11 |
+| EXPIRING_SOON | 6    | External Application Load Balancer | global      | tls-demo-global-app-proxy   | tls-demo-global-cert-7       | False   | 2026-05-23 |
+| EXPIRING_SOON | 6    | SSL Proxy Load Balancer            | global      | tls-demo-ssl-proxy          | tls-demo-global-cert-7       | False   | 2026-05-23 |
+| WARNING       | 14   | Classic Application Load Balancer  | global      | tls-demo-classic-app-proxy  | tls-demo-global-cert-15      | False   | 2026-05-31 |
+| OK            | 59   | Regional External Application L... | us-central1 | tls-demo-regional-app-proxy | tls-demo-regional-cert-60    | False   | 2026-07-15 |
+| OK            | N/A  | External Application Load Balancer | global      | apigee-lb-k5gobsc6uxu8      | apigee-ssl-cert-cwwcsnstbuz2 | True    | N/A        |
++---------------+------+------------------------------------+-------------+-----------------------------+------------------------------+---------+------------+
+
+Status Meaning
+----------------------------------------------------------------------------------------------------
+EXPIRED       : Self-managed certificate is already expired.
+EXPIRING_SOON : Self-managed certificate expires within 10 days.
+WARNING       : Self-managed certificate expires within 30 days.
+ERROR         : Certificate expiry could not be parsed or is unsupported.
+OK            : Google-managed cert, or self-managed cert has more than 30 days left.
