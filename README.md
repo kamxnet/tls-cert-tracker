@@ -6,13 +6,13 @@ This Python-based tool helps GCP users track the expiration status of TLS certif
 
 ## Key Benefits
 
-Centralized visibility into TLS certificates attached to supported GCP Load Balancer proxy resources
-Differentiates Google-managed and self-managed certificates
-Parses expiry dates for self-managed PEM certificates
-Categorizes certificate risk using clear status labels
-Supports multiple proxy-based Load Balancer types
-Produces a structured summary and table output for easier review
-Useful for troubleshooting, audits, operational reviews, and proactive risk detection
+Centralized visibility into TLS certificates attached to supported GCP Load Balancer proxy resources.
+Differentiates Google-managed and self-managed certificates.
+Parses expiry dates for self-managed PEM certificates.
+Categorizes certificate risk using clear status labels.
+Supports multiple proxy-based Load Balancer types.
+Produces a structured summary and table output for easier review.
+Useful for troubleshooting, audits, operational reviews, and proactive risk detection.
 
 ## How It Works
 
