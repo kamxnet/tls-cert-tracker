@@ -112,14 +112,25 @@ if ! gcloud iam service-accounts describe "${SA_EMAIL}" --project="${PROJECT_ID}
     --display-name="TLS Certificate Expiry Tracker Service Account" \
     --project="${PROJECT_ID}" \
     --quiet
+  echo "  Waiting 10 seconds for IAM service account propagation..."
+  sleep 10
 fi
 
 for ROLE in "roles/compute.viewer" "roles/logging.logWriter" "roles/run.invoker"; do
-  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  ATTEMPT=1
+  until gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="${ROLE}" \
     --condition=None \
-    --quiet >/dev/null
+    --quiet >/dev/null 2>&1; do
+    if [[ ${ATTEMPT} -ge 6 ]]; then
+      echo "ERROR: Failed to bind role ${ROLE} to ${SA_EMAIL} after ${ATTEMPT} attempts." >&2
+      exit 1
+    fi
+    echo "  Waiting for service account IAM propagation (attempt ${ATTEMPT}/5)..."
+    sleep 5
+    ATTEMPT=$((ATTEMPT + 1))
+  done
 done
 
 echo ""
