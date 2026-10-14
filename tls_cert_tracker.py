@@ -1,5 +1,7 @@
 import argparse
 from datetime import datetime
+import json
+import sys
 
 import google.auth
 import pytz
@@ -9,6 +11,8 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
+DEFAULT_ALERT_STATUSES = ("EXPIRED", "EXPIRING_SOON", "WARNING")
+VALID_ALERT_STATUSES = ("EXPIRED", "EXPIRING_SOON", "WARNING", "ERROR")
 
 
 def get_credentials():
@@ -519,15 +523,8 @@ def filter_records(records, classic_only=False, ssl_proxy_only=False):
     return records
 
 
-def print_report(records):
-    """Print final report with summary and detailed table."""
-    print("\nTLS Certificate Expiry Report")
-    print("=" * 100)
-
-    if not records:
-        print("No supported proxy certificates found.")
-        return
-
+def enrich_records(records):
+    """Enrich certificate records with calculated status, days left, and sort by urgency."""
     enriched_records = []
     summary = {
         "EXPIRED": 0,
@@ -561,6 +558,159 @@ def print_report(records):
             item.get("proxy_name") or "",
         )
     )
+
+    return enriched_records, summary
+
+
+def parse_alert_statuses(alert_on_value):
+    """Parse and validate comma-separated alert status names."""
+    if not alert_on_value:
+        return list(DEFAULT_ALERT_STATUSES)
+
+    statuses = [
+        item.strip().upper()
+        for item in alert_on_value.split(",")
+        if item.strip()
+    ]
+    if not statuses:
+        return list(DEFAULT_ALERT_STATUSES)
+
+    invalid = [status for status in statuses if status not in VALID_ALERT_STATUSES]
+    if invalid:
+        raise ValueError(
+            f"Invalid --alert-on status(es): {', '.join(invalid)}. "
+            f"Allowed values: {', '.join(VALID_ALERT_STATUSES)}"
+        )
+
+    return statuses
+
+
+def emit_log_alerts(records, project, alert_statuses=DEFAULT_ALERT_STATUSES):
+    """
+    Emit structured JSON log entries to stdout for Cloud Logging and
+    Cloud Monitoring log-based email alerts.
+    """
+    enriched_records, _ = enrich_records(records)
+    alert_status_set = set(alert_statuses)
+    alerting_records = [
+        record for record in enriched_records
+        if record["status"] in alert_status_set
+    ]
+
+    if not alerting_records:
+        ok_payload = {
+            "severity": "INFO",
+            "event": "TLS_CERT_EXPIRY_CHECK_OK",
+            "project": project,
+            "total_scanned": len(enriched_records),
+            "alert_statuses": list(alert_statuses),
+            "message": (
+                f"All {len(enriched_records)} scanned TLS certificate(s) in project "
+                f"'{project}' are healthy (no certificates matched: "
+                f"{', '.join(alert_statuses)})."
+            ),
+        }
+        print(json.dumps(ok_payload), flush=True)
+        return
+
+    for record in alerting_records:
+        item_severity = (
+            "ERROR"
+            if record["status"] in ("EXPIRED", "EXPIRING_SOON", "ERROR")
+            else "WARNING"
+        )
+        item_payload = {
+            "severity": item_severity,
+            "event": "TLS_CERT_EXPIRY_ITEM",
+            "project": project,
+            "status": record["status"],
+            "days_left": record["days_left"],
+            "cert_name": record.get("cert_name"),
+            "proxy_name": record.get("proxy_name"),
+            "lb_type": record.get("lb_type"),
+            "region": record.get("region"),
+            "is_managed": record.get("is_managed"),
+            "expiry": record.get("expiry_display"),
+            "message": (
+                f"[{record['status']}] Certificate '{record.get('cert_name')}' "
+                f"on proxy '{record.get('proxy_name')}' ({record.get('region')}) "
+                f"has {record['days_left']} day(s) remaining "
+                f"(Expiry: {record.get('expiry_display')})."
+            ),
+        }
+        print(json.dumps(item_payload), flush=True)
+
+    counts = {
+        "EXPIRED": sum(1 for r in alerting_records if r["status"] == "EXPIRED"),
+        "EXPIRING_SOON": sum(1 for r in alerting_records if r["status"] == "EXPIRING_SOON"),
+        "WARNING": sum(1 for r in alerting_records if r["status"] == "WARNING"),
+        "ERROR": sum(1 for r in alerting_records if r["status"] == "ERROR"),
+    }
+
+    overall_severity = (
+        "ERROR"
+        if (counts["EXPIRED"] > 0 or counts["EXPIRING_SOON"] > 0 or counts["ERROR"] > 0)
+        else "WARNING"
+    )
+
+    detail_lines = [
+        (
+            f"- [{r['status']}] {r.get('cert_name')} | "
+            f"Proxy: {r.get('proxy_name')} ({r.get('region')}) | "
+            f"LB: {r.get('lb_type')} | "
+            f"Days left: {r['days_left']} | "
+            f"Expiry: {r.get('expiry_display')}"
+        )
+        for r in alerting_records
+    ]
+
+    alert_payload = {
+        "severity": overall_severity,
+        "event": "TLS_CERT_EXPIRY_ALERT",
+        "project": project,
+        "alert_count": len(alerting_records),
+        "total_scanned": len(enriched_records),
+        "alert_statuses": list(alert_statuses),
+        "expired_count": counts["EXPIRED"],
+        "expiring_soon_count": counts["EXPIRING_SOON"],
+        "warning_count": counts["WARNING"],
+        "error_count": counts["ERROR"],
+        "certificate_details": "\n".join(detail_lines),
+        "message": (
+            f"TLS Certificate Expiry Alert for project '{project}': "
+            f"{len(alerting_records)} certificate(s) require attention "
+            f"(Expired: {counts['EXPIRED']}, "
+            f"Expiring soon <=10d: {counts['EXPIRING_SOON']}, "
+            f"Warning <=30d: {counts['WARNING']}, "
+            f"Errors: {counts['ERROR']})."
+        ),
+        "certificates": [
+            {
+                "status": r["status"],
+                "days_left": r["days_left"],
+                "cert_name": r.get("cert_name"),
+                "proxy_name": r.get("proxy_name"),
+                "lb_type": r.get("lb_type"),
+                "region": r.get("region"),
+                "is_managed": r.get("is_managed"),
+                "expiry": r.get("expiry_display"),
+            }
+            for r in alerting_records
+        ],
+    }
+    print(json.dumps(alert_payload), flush=True)
+
+
+def print_report(records):
+    """Print final report with summary and detailed table."""
+    print("\nTLS Certificate Expiry Report")
+    print("=" * 100)
+
+    if not records:
+        print("No supported proxy certificates found.")
+        return
+
+    enriched_records, summary = enrich_records(records)
 
     print("\nSummary")
     print("-" * 100)
@@ -646,8 +796,27 @@ def main():
         action="store_true",
         help="Skip scanning Target SSL Proxies during the default full scan.",
     )
+    parser.add_argument(
+        "--emit-log-alerts",
+        action="store_true",
+        help=(
+            "Emit structured JSON alert logs to stdout for Cloud Logging and "
+            "Cloud Monitoring log-based email alerts."
+        ),
+    )
+    parser.add_argument(
+        "--alert-on",
+        default=",".join(DEFAULT_ALERT_STATUSES),
+        help=(
+            "Comma-separated list of certificate statuses that trigger an alert "
+            "when --emit-log-alerts is enabled "
+            f"(default: {','.join(DEFAULT_ALERT_STATUSES)}). "
+            f"Allowed values: {', '.join(VALID_ALERT_STATUSES)}."
+        ),
+    )
 
     args = parser.parse_args()
+    alert_statuses = parse_alert_statuses(args.alert_on)
 
     selected_modes = [args.global_only, args.regional_only, args.ssl_proxy_only]
     if sum(bool(mode) for mode in selected_modes) > 1:
@@ -720,6 +889,14 @@ def main():
     )
 
     print_report(all_records)
+
+    if args.emit_log_alerts:
+        emit_log_alerts(
+            records=all_records,
+            project=args.project,
+            alert_statuses=alert_statuses,
+        )
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":
